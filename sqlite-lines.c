@@ -1,4 +1,7 @@
 #include "sqlite3ext.h"
+/**
+code was compiled with "-DSQLITE_HAVE_ZLIB -lz")
+*/
 
 SQLITE_EXTENSION_INIT1
 
@@ -7,6 +10,15 @@ SQLITE_EXTENSION_INIT1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef SQLITE_HAVE_ZLIB
+#include <zlib.h>
+#define fopen  gzopen
+#define fclose gzclose
+#define fread  gzfread
+#define fseek  gzseek
+#define ftell  gztell
+#endif
 
 // TODO is this deterministic?
 static void linesVersionFunc(sqlite3_context *context, int argc,
@@ -36,7 +48,13 @@ typedef struct lines_cursor lines_cursor;
 struct lines_cursor {
   sqlite3_vtab_cursor base; /* Base class - must be first */
   // File pointer of the file being "read" (or in memory file for lines())
-  FILE *fp;
+  
+  #ifdef SQLITE_HAVE_ZLIB
+    gzFile *fp;             /* Read the text from this compressed file pointer */
+  #else
+    FILE *fp;              /* Read the text from this file pointer */
+  #endif
+  
   // length of current line
   size_t curLineLength;
   char *curLineContents;
